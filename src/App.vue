@@ -253,63 +253,73 @@ function redrawNoise() {
 }
 </script>
 <template>
-  <button @click="start">start</button>
-  <div>
+  <section>
     <div>
-      <label for="modeProbability">modeProbability</label>
-      <input
-        name="modeProbability"
-        type="number"
-        min="0"
-        max="1"
-        step="0.01"
-        v-model="modeProbabilityRef"
-      />
-    </div>
-    <div>
-      <label for="codecString">codecString</label>
-      <input name="codecString" type="text" v-model="codecStringRef" />
-    </div>
-    <div>
-      <label for="encoderNum">encoderNum</label>
-      <input name="encoderNum" type="number" v-model="encoderNumRef" />
-    </div>
-    <div>
-      <label for="fps">fps</label>
-      <input name="fps" type="number" v-model="fpsRef" />
-    </div>
-    <div>
-      <label for="forceKeyFlag">forceKeyFlag</label>
-
-      <input name="forceKeyFlag" type="checkbox" v-model="forceKeyFlagRef" />
+      <div>
+        <button @click="start">start</button>
+        <button @click="redrawNoise">redrawNoise</button>
+      </div>
+      <div>
+        <button @click="presetVP8">vp8</button>
+        <button @click="presetVP9">vp9</button>
+        <button @click="presetAV1">av1</button>
+        <button @click="presetAVC">avc</button>
+      </div>
     </div>
 
     <div>
-      <label for="exportFlag">exportFlag</label>
+      <div>
+        <label for="modeProbability">modeProbability</label>
+        <input
+          name="modeProbability"
+          type="number"
+          min="0"
+          max="1"
+          step="0.01"
+          v-model="modeProbabilityRef"
+        />
+      </div>
+      <div>
+        <label for="codecString">codecString</label>
+        <input name="codecString" type="text" v-model="codecStringRef" />
+      </div>
+      <div>
+        <label for="encoderNum">encoderNum</label>
+        <input name="encoderNum" type="number" v-model="encoderNumRef" />
+      </div>
+      <div>
+        <label for="fps">fps</label>
+        <input name="fps" type="number" v-model="fpsRef" />
+      </div>
+      <div>
+        <label for="forceKeyFlag">forceKeyFlag</label>
 
-      <input name="exportFlag" type="checkbox" v-model="exportFlagRef" />
-    </div>
-    <div>
-      <label for="exportCounter">exportCounter</label>
+        <input name="forceKeyFlag" type="checkbox" v-model="forceKeyFlagRef" />
+      </div>
 
-      <input name="exportCounter" type="number" v-model="exportCounterRef" />
-    </div>
+      <div>
+        <label for="exportFlag">exportFlag</label>
 
-    <div>
-      <button @click="presetVP8">vp8</button>
-      <button @click="presetVP9">vp9</button>
-      <button @click="presetAV1">av1</button>
-      <button @click="presetAVC">avc</button>
+        <input name="exportFlag" type="checkbox" v-model="exportFlagRef" />
+      </div>
+      <div>
+        <label for="exportCounter">exportCounter</label>
+
+        <input name="exportCounter" type="number" v-model="exportCounterRef" />
+      </div>
     </div>
-    <div>
-      <button @click="redrawNoise">redrawNoise</button>
-    </div>
-  </div>
+  </section>
 
   <canvas width="864" height="864" ref="encodedRef"></canvas>
 </template>
 
 <style scoped>
+section {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
 canvas {
   width: 864px;
   height: 864px;
