@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { drawImageToCanvas, drawNoiseToCanvas } from "./assets/CanvasUtils.ts";
 
 const encodedRef = ref<HTMLCanvasElement>();
 
@@ -17,34 +18,79 @@ const fpsRef = ref<number>(60);
 let encodeCtx: CanvasRenderingContext2D;
 
 let exportFlagRef = ref<boolean>(false);
+let forceKeyFlagRef = ref<boolean>(false);
 
-const drawImageToCanvas = async () => {
-  // noise image setup
-  const image = new Image();
-  image.src = "./noise.png";
+let counter = 0;
+let mode = 0;
+let dir: number[] = [0, 0];
+let interval = 30;
 
-  await new Promise((resolve) => {
-    image.onload = () => {
-      encodeCtx.drawImage(image, 0, 0);
-      resolve(true);
-    };
-  });
-};
+let decoder: VideoDecoder;
 
-const drawNoiseToCanvas = (color: boolean = false) => {
-  const imgData = encodeCtx.getImageData(0, 0, width, height);
-  const pix = imgData.data;
-  const pixLen = pix.length;
+async function handleDecodeOutput(chunk: VideoFrame) {
+  // encodeCtx.clearRect(0, 0, width, height);
+  // encodeCtx.globalAlpha = 0.1;
+  // console.log("mode", mode);
 
-  console.log(imgData);
-  for (let pixel = 0; pixel < pixLen; pixel += 4) {
-    const Y = Math.random() * 255;
-    pix[pixel + 2] = color ? Math.random() * 255 : Y;
-    pix[pixel + 1] = color ? Math.random() * 255 : Y;
-    pix[pixel] = color ? Math.random() * 255 : Y;
+  if (mode == 1) {
+    encodeCtx.drawImage(
+      chunk,
+      Math.random() * 100 - 5,
+      Math.random() * 100 - 5,
+      Math.random() * width * 0.5 + width * 0.5,
+      Math.random() * height * 0.5 + height * 0.5,
+    );
+  } else if (mode === 2) {
+    encodeCtx.drawImage(
+      chunk,
+      (counter % 100) * dir[0],
+      (counter % 100) * dir[1],
+    );
+  } else {
+    encodeCtx.drawImage(chunk, 0, 0);
   }
-  encodeCtx.putImageData(imgData, 0, 0);
-};
+
+  // update mode
+  if (counter % interval === 0 && Math.random() < modeProbabilityRef.value) {
+    mode = Math.floor(Math.random() * 3);
+
+    if (mode === 2) {
+      dir = [
+        Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
+        Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
+      ];
+
+      dir[0] === 0 && dir[1] === 0 && (dir[0] = 8 * Math.random());
+    }
+
+    interval = Math.floor(Math.random() * 60) + 10;
+  }
+
+  if (counter % interval === interval - 1) {
+    mode = 0;
+  }
+
+  chunk.close();
+}
+
+function createDecoder(codecString: string) {
+  decoder = new VideoDecoder({
+    output: handleDecodeOutput,
+    error: async function (e) {
+      console.error(e);
+
+      createDecoder(codecStringRef.value);
+
+      forceKeyFlagRef.value = true;
+      await decoder.flush();
+    },
+  });
+
+  decoder.configure({
+    codec: codecString,
+    hardwareAcceleration: "prefer-software",
+  });
+}
 
 async function start() {
   console.log("mounted");
@@ -52,103 +98,18 @@ async function start() {
     willReadFrequently: true,
   })!;
 
-  await drawImageToCanvas();
-  drawNoiseToCanvas();
+  await drawImageToCanvas(encodeCtx, "/noise.png");
+  drawNoiseToCanvas(encodeCtx);
 
   const stream = encodedRef.value!.captureStream(30);
   const [videoTrack] = stream.getVideoTracks();
-
-  let mode = 0;
-  let dir: number[] = [0, 0];
-
-  let interval = 30;
-
-  async function handleDecodeOutput(chunk: VideoFrame) {
-    // encodeCtx.clearRect(0, 0, width, height);
-    // encodeCtx.globalAlpha = 0.1;
-    // console.log("mode", mode);
-
-    if (mode == 1) {
-      encodeCtx.drawImage(
-        chunk,
-        Math.random() * 100 - 5,
-        Math.random() * 100 - 5,
-        Math.random() * width * 0.5 + width * 0.5,
-        Math.random() * height * 0.5 + height * 0.5,
-      );
-    } else if (mode === 2) {
-      encodeCtx.drawImage(
-        chunk,
-        (counter % 100) * dir[0],
-        (counter % 100) * dir[1],
-      );
-    } else {
-      encodeCtx.drawImage(chunk, 0, 0);
-    }
-
-    // update mode
-    if (counter % interval === 0 && Math.random() < modeProbabilityRef.value) {
-      mode = Math.floor(Math.random() * 3);
-
-      if (mode === 2) {
-        dir = [
-          Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
-          Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
-        ];
-
-        dir[0] === 0 && dir[1] === 0 && (dir[0] = 8 * Math.random());
-      }
-
-      interval = Math.floor(Math.random() * 60) + 10;
-    }
-
-    if (counter % interval === interval - 1) {
-      mode = 0;
-    }
-
-    chunk.close();
-  }
-
-  let decoder: VideoDecoder;
-
-  function createDecoder(codecString: string) {
-    decoder = new VideoDecoder({
-      output: handleDecodeOutput,
-      error: async function (e) {
-        console.error(e);
-
-        createDecoder(codecStringRef.value);
-
-        forceKeyFrame = true;
-        await decoder.flush();
-      },
-    });
-
-    decoder.configure({
-      codec: codecString,
-      hardwareAcceleration: "prefer-software",
-    });
-  }
-
   createDecoder(codecStringRef.value);
 
   async function handleEncodeOutput(chunk: EncodedVideoChunk) {
-    // consts.copyTo(data);
-
-    // data[Math.floor(Math.random() * data.length)] = 0;
-
-    // const modifiedChunk = new EncodedVideoChunk({
-    //   timestamp: chunk.timestamp,
-    //   duration: chunk.duration ? chunk.duration : 0,
-    //   type: chunk.type,
-    //   data: data,
-    // });
-
-    // chunk.
     try {
       decoder.decode(chunk);
     } catch (e) {
-      forceKeyFrame = true;
+      forceKeyFlagRef.value = true;
     }
   }
 
@@ -160,7 +121,7 @@ async function start() {
         output: handleEncodeOutput,
         error: function (e) {
           console.error(e, arguments);
-          forceKeyFrame = true;
+          forceKeyFlagRef.value = true;
         },
       });
 
@@ -182,9 +143,6 @@ async function start() {
 
   createEncoders(codecStringRef.value);
 
-  let counter = 0;
-  let forceKeyFrame = false;
-
   const reader = async () => {
     const processor = new MediaStreamTrackProcessor(videoTrack);
     const frameReader = processor.readable.getReader();
@@ -199,10 +157,10 @@ async function start() {
     const targetEncoder = encoders[Math.floor(Math.random() * encoders.length)];
 
     targetEncoder.encoder.encode(videoFrame, {
-      keyFrame: forceKeyFrame || targetEncoder.counter % 30 === 0,
+      keyFrame: forceKeyFlagRef.value || targetEncoder.counter % 30 === 0,
     });
 
-    forceKeyFrame = false;
+    forceKeyFlagRef.value = false;
 
     targetEncoder.counter++;
 
@@ -270,7 +228,7 @@ async function start() {
       // intervalId = setInterval(reader, 1000 / --fps);
       console.log("fps", fpsRef.value);
     } else if (e.key === "r") {
-      drawNoiseToCanvas();
+      drawNoiseToCanvas(encodeCtx);
       createEncoders(codecStringRef.value);
       createDecoder(codecStringRef.value);
     } else if (e.key === "e") {
@@ -286,28 +244,28 @@ async function start() {
       codecStringRef.value = "vp8";
       createEncoders(codecStringRef.value);
       createDecoder(codecStringRef.value);
-      forceKeyFrame = true;
+      forceKeyFlagRef.value = true;
       fpsRef.value = 10;
     } else if (e.key === "2") {
       codecStringRef.value = "avc1.4d002a";
       encoderNumRef.value = 5;
       createEncoders(codecStringRef.value);
       createDecoder(codecStringRef.value);
-      forceKeyFrame = true;
+      forceKeyFlagRef.value = true;
     } else if (e.key === "3") {
       encoderNumRef.value = 2;
       codecStringRef.value = "vp09.02.10.10.01.09.16.09.01";
       createEncoders(codecStringRef.value);
       createDecoder(codecStringRef.value);
 
-      forceKeyFrame = true;
+      forceKeyFlagRef.value = true;
     } else if (e.key === "4") {
       codecStringRef.value = "av01.0.04M.10.0.110.09.16.09.0";
       encoderNumRef.value = 2;
       createEncoders(codecStringRef.value);
       createDecoder(codecStringRef.value);
 
-      forceKeyFrame = true;
+      forceKeyFlagRef.value = true;
     }
   });
 }
@@ -320,6 +278,9 @@ async function start() {
       <input
         name="modeProbability"
         type="number"
+        min="0"
+        max="1"
+        step="0.01"
         v-model="modeProbabilityRef"
       />
     </div>
@@ -335,6 +296,12 @@ async function start() {
       <label for="fps">fps</label>
       <input name="fps" type="number" v-model="fpsRef" />
     </div>
+    <div>
+      <label for="forceKeyFlag">forceKeyFlag</label>
+
+      <input name="forceKeyFlag" type="checkbox" v-model="forceKeyFlagRef" />
+    </div>
+
     <div>
       <label for="exportFlag">exportFlag</label>
 
