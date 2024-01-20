@@ -28,13 +28,32 @@ let decoder: VideoDecoder;
 const encoders: { encoder: VideoEncoder; counter: number }[] = [];
 
 let counter = 0;
-let mode = 0;
+const modeRef = ref<number>(0);
 let dir: number[] = [0, 0];
 let modeInterval = 30;
 let modeCounter = 0;
 
+function updateMode(event?: InputEvent) {
+  if (event && event.target && event.target instanceof HTMLInputElement) {
+    modeRef.value = +event.target.value;
+  }
+
+  console.log("update mode", modeRef.value);
+  if (modeRef.value === 2) {
+    dir = [
+      Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
+      Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
+    ];
+
+    dir[0] === 0 && dir[1] === 0 && (dir[0] = 8 * Math.random());
+  }
+
+  modeInterval = Math.floor(Math.random() * 60) + 5;
+  modeCounter = 0;
+}
+
 async function handleDecodeOutput(chunk: VideoFrame) {
-  if (mode == 1) {
+  if (modeRef.value == 1) {
     encodeCtx.drawImage(
       chunk,
       Math.random() * 100 - 5,
@@ -42,7 +61,7 @@ async function handleDecodeOutput(chunk: VideoFrame) {
       Math.random() * width * 0.5 + width * 0.5,
       Math.random() * height * 0.5 + height * 0.5,
     );
-  } else if (mode === 2) {
+  } else if (modeRef.value === 2) {
     encodeCtx.drawImage(
       chunk,
       (counter % modeInterval) * dir[0],
@@ -50,29 +69,6 @@ async function handleDecodeOutput(chunk: VideoFrame) {
     );
   } else {
     encodeCtx.drawImage(chunk, 0, 0);
-  }
-
-  modeCounter++;
-
-  // update mode
-  if (modeCounter > modeInterval) {
-    mode = 0;
-    modeCounter = 0;
-
-    if (Math.random() < modeProbabilityRef.value) {
-      mode = Math.floor(Math.random() * 3);
-
-      if (mode === 2) {
-        dir = [
-          Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
-          Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
-        ];
-
-        dir[0] === 0 && dir[1] === 0 && (dir[0] = 8 * Math.random());
-      }
-
-      modeInterval = Math.floor(Math.random() * 100) + 10;
-    }
   }
 
   chunk.close();
@@ -106,6 +102,10 @@ async function handleEncodeOutput(chunk: EncodedVideoChunk) {
 }
 
 function createEncoders(codecString: string) {
+  for (let encoder of encoders) {
+    if (encoder.encoder.state === "configured") encoder.encoder.close();
+  }
+
   for (let i = 0; i < encoderNumRef.value; ++i) {
     const encoder = new VideoEncoder({
       output: handleEncodeOutput,
@@ -158,6 +158,11 @@ async function start() {
 
     const targetEncoder = encoders[Math.floor(Math.random() * encoders.length)];
 
+    if (targetEncoder.encoder.state !== "configured") {
+      videoFrame.close();
+      return;
+    }
+
     targetEncoder.encoder.encode(videoFrame, {
       keyFrame: forceKeyFlagRef.value || targetEncoder.counter % 30 === 0,
     });
@@ -185,6 +190,18 @@ async function start() {
       forceKeyFlagRef.value = true;
     }
 
+    modeCounter++;
+
+    // update mode
+    if (modeCounter > modeInterval) {
+      // ランダムにモードを決定
+      modeRef.value =
+        Math.random() < modeProbabilityRef.value
+          ? Math.floor(Math.random() * 3)
+          : 0;
+      updateMode();
+    }
+
     // 60 fps
     if (updateCounter % Math.floor(60 / fpsRef.value) === 0) {
       await reader();
@@ -198,9 +215,6 @@ async function start() {
       a.href = url;
       a.download = `export_${exportCounterRef.value.toString().padStart(5, "0")}.png`;
       a.click();
-      await new Promise((resolve) => {
-        setTimeout(resolve, 1000 / 10);
-      });
     }
 
     const current = performance.now();
@@ -280,6 +294,19 @@ function redrawNoise() {
         />
       </div>
       <div>
+        <label for="mode">mode</label>
+        <input
+          name="mode"
+          type="number"
+          min="0"
+          max="2"
+          step="1"
+          :value="modeRef"
+          @input="updateMode"
+        />
+      </div>
+      <hr />
+      <div>
         <label for="codecString">codecString</label>
         <input name="codecString" type="text" v-model="codecStringRef" />
       </div>
@@ -287,6 +314,8 @@ function redrawNoise() {
         <label for="encoderNum">encoderNum</label>
         <input name="encoderNum" type="number" v-model="encoderNumRef" />
       </div>
+    </div>
+    <div>
       <div>
         <label for="fps">fps</label>
         <input name="fps" type="number" v-model="fpsRef" />
@@ -296,7 +325,7 @@ function redrawNoise() {
 
         <input name="forceKeyFlag" type="checkbox" v-model="forceKeyFlagRef" />
       </div>
-
+      <hr />
       <div>
         <label for="exportFlag">exportFlag</label>
 
@@ -318,6 +347,8 @@ section {
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: space-around;
+  width: 100%;
 }
 
 canvas {
