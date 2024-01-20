@@ -4,7 +4,7 @@ import { drawImageToCanvas, drawNoiseToCanvas } from "./assets/CanvasUtils.ts";
 
 const encodedRef = ref<HTMLCanvasElement>();
 
-const modeProbabilityRef = ref<number>(0.1);
+const modeProbabilityRef = ref<number>(0);
 
 const width = 864;
 const height = 864;
@@ -23,6 +23,9 @@ let exportFlagRef = ref<boolean>(false);
 let forceKeyFlagRef = ref<boolean>(false);
 
 let requestResetFlagRef = ref<boolean>(false);
+
+let stopRenderFlagRef = ref<boolean>(false);
+let notimeUpdateFlagRef = ref<boolean>(false);
 
 let decoder: VideoDecoder;
 const encoders: { encoder: VideoEncoder; counter: number }[] = [];
@@ -48,7 +51,7 @@ function updateMode(event?: InputEvent) {
     dir[0] === 0 && dir[1] === 0 && (dir[0] = 8 * Math.random());
   }
 
-  modeInterval = Math.floor(Math.random() * 60) + 5;
+  modeInterval = Math.floor(Math.random() * 400) + 5;
   modeCounter = 0;
 }
 
@@ -131,6 +134,9 @@ function createEncoders(codecString: string) {
   }
 }
 
+let exportBuffer: string[] = [];
+let dhandle;
+
 async function start() {
   console.log("mounted");
   encodeCtx = encodedRef.value!.getContext("2d", {
@@ -181,7 +187,11 @@ async function start() {
 
   let lastUpdated = performance.now();
 
+  let exportCounter = 0;
+
   async function update() {
+    if (stopRenderFlagRef.value) return;
+
     if (requestResetFlagRef.value) {
       createEncoders(codecStringRef.value);
       createDecoder(codecStringRef.value);
@@ -209,12 +219,27 @@ async function start() {
 
     // export
     if (exportFlagRef.value) {
-      exportCounterRef.value++;
-      const url = encodedRef.value!.toDataURL("image/png");
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `export_${exportCounterRef.value.toString().padStart(5, "0")}.png`;
-      a.click();
+      exportCounter++;
+      console.log(exportCounter);
+      const id = exportCounter;
+
+      await new Promise((resolve) => {
+        encodedRef.value!.toBlob(async function (result) {
+          // @ts-ignore
+          let fhandle = await dhandle.getFileHandle(
+            `export_${id.toString().padStart(5, "0")}.png`,
+            {
+              create: true,
+            },
+          );
+          const writable = await fhandle.createWritable();
+          await writable.write(result);
+          await writable.close();
+          resolve(true);
+        });
+      });
+
+      exportCounterRef.value = exportCounter;
     }
 
     const current = performance.now();
@@ -222,11 +247,19 @@ async function start() {
     updateCounter++;
 
     if (exportFlagRef.value) {
-      update();
-    } else {
       setTimeout(update, 1000 / 60 - (current - lastUpdated));
-    }
+      // update();
+    } else {
+      // update();
 
+      if (codecStringRef.value === "vp8") {
+        setTimeout(update, 1000 / 60 - (current - lastUpdated));
+      } else if (codecStringRef.value === "avc1.4d002a") {
+        update();
+      } else {
+        setTimeout(update, 5);
+      }
+    }
     lastUpdated = current;
   }
 
@@ -234,32 +267,82 @@ async function start() {
   update();
 }
 
+async function exportBufferToFiles() {
+  console.log("exportBufferToFiles", exportBuffer.length);
+
+  console.log("ファイル名インクリメントして保存");
+  dhandle = await window.showDirectoryPicker();
+  await dhandle.requestPermission({ writable: true });
+
+  // for (let i = 0; i < exportBuffer.length; i++) {
+  //   const a = document.createElement("a");
+  //   a.href = exportBuffer[i];
+  //   a.download = `export_${i.toString().padStart(5, "0")}.png`;
+  //   a.click();
+  //
+  //   await new Promise((resolve) => setTimeout(resolve, 100));
+  // }
+}
+
 function presetVP8() {
   encoderNumRef.value = 8;
   codecStringRef.value = "vp8";
-  fpsRef.value = 10;
+  fpsRef.value = 30;
+  requestResetFlagRef.value = true;
+}
+
+function presetVP8Fix() {
+  redrawNoise();
+  encoderNumRef.value = 8;
+  codecStringRef.value = "vp8";
+  fpsRef.value = 30;
   requestResetFlagRef.value = true;
 }
 
 function presetAVC() {
   codecStringRef.value = "avc1.4d002a";
   encoderNumRef.value = 5;
-  fpsRef.value = 30;
+  fpsRef.value = 60;
+  requestResetFlagRef.value = true;
+}
+
+function presetFixAVC() {
+  codecStringRef.value = "avc1.4d002a";
+  encoderNumRef.value = 5;
+  modeProbabilityRef.value = 0;
+  fpsRef.value = 60;
+  requestResetFlagRef.value = true;
+}
+
+function presetFixAVCMono() {
+  redrawNoise();
+  codecStringRef.value = "avc1.4d002a";
+  encoderNumRef.value = 5;
+  modeProbabilityRef.value = 0;
+  fpsRef.value = 60;
   requestResetFlagRef.value = true;
 }
 
 function presetVP9() {
   encoderNumRef.value = 2;
-  codecStringRef.value = "vp09.02.10.10.01.09.16.09.01";
+  codecStringRef.value = "vp09.00.10.10.01.09.16.09.01";
   requestResetFlagRef.value = true;
-  fpsRef.value = 30;
+  fpsRef.value = 60;
 }
 
 function presetAV1() {
   codecStringRef.value = "av01.0.04M.10.0.110.09.16.09.0";
   encoderNumRef.value = 2;
   requestResetFlagRef.value = true;
-  fpsRef.value = 30;
+  fpsRef.value = 60;
+}
+
+function presetAV1Mono() {
+  redrawNoise();
+  codecStringRef.value = "av01.0.04M.10.0.110.09.16.09.0";
+  encoderNumRef.value = 2;
+  requestResetFlagRef.value = true;
+  fpsRef.value = 60;
 }
 
 function redrawNoise() {
@@ -278,6 +361,11 @@ function redrawNoise() {
         <button @click="presetVP9">vp9</button>
         <button @click="presetAV1">av1</button>
         <button @click="presetAVC">avc</button>
+        <br />
+        <button @click="presetFixAVC">fixavc</button>
+        <button @click="presetFixAVCMono">fixavcmono</button>
+        <button @click="presetVP8Fix">fixvp8mono</button>
+        <button @click="presetAV1Mono">fixav1mono</button>
       </div>
     </div>
 
@@ -327,15 +415,34 @@ function redrawNoise() {
       </div>
       <hr />
       <div>
-        <label for="exportFlag">exportFlag</label>
-
-        <input name="exportFlag" type="checkbox" v-model="exportFlagRef" />
+        <label for="notimeUpdateFlag">notimeUpdateFlag</label>
+        <input
+          name="notimeUpdateFlag"
+          type="checkbox"
+          v-model="notimeUpdateFlagRef"
+        />
       </div>
-      <div>
-        <label for="exportCounter">exportCounter</label>
+      <!--      <div>-->
+      <!--        <label for="stopRenderFlag">stopRenderFlag</label>-->
+      <!--        <input-->
+      <!--          name="stopRenderFlag"-->
+      <!--          type="checkbox"-->
+      <!--          v-model="stopRenderFlagRef"-->
+      <!--        />-->
+      <!--      </div>-->
+      <!--      <div>-->
+      <!--        <label for="exportFlag">exportFlag</label>-->
 
-        <input name="exportCounter" type="number" v-model="exportCounterRef" />
-      </div>
+      <!--        <input name="exportFlag" type="checkbox" v-model="exportFlagRef" />-->
+      <!--      </div>-->
+      <!--      <div>-->
+      <!--        <label for="exportCounter">exportCounter</label>-->
+
+      <!--        <input name="exportCounter" type="number" v-model="exportCounterRef" />-->
+      <!--      </div>-->
+      <!--      <div>-->
+      <!--        <button @click="exportBufferToFiles">exportBufferToFiles</button>-->
+      <!--      </div>-->
     </div>
   </section>
 
@@ -352,8 +459,8 @@ section {
 }
 
 canvas {
-  width: 864px;
-  height: 864px;
+  width: 432px;
+  height: 432px;
   border: none;
 }
 </style>
