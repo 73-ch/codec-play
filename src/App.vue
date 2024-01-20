@@ -24,18 +24,16 @@ let forceKeyFlagRef = ref<boolean>(false);
 
 let requestResetFlagRef = ref<boolean>(false);
 
+let decoder: VideoDecoder;
+const encoders: { encoder: VideoEncoder; counter: number }[] = [];
+
 let counter = 0;
 let mode = 0;
 let dir: number[] = [0, 0];
-let interval = 30;
-
-let decoder: VideoDecoder;
+let modeInterval = 30;
+let modeCounter = 0;
 
 async function handleDecodeOutput(chunk: VideoFrame) {
-  // encodeCtx.clearRect(0, 0, width, height);
-  // encodeCtx.globalAlpha = 0.1;
-  // console.log("mode", mode);
-
   if (mode == 1) {
     encodeCtx.drawImage(
       chunk,
@@ -47,31 +45,34 @@ async function handleDecodeOutput(chunk: VideoFrame) {
   } else if (mode === 2) {
     encodeCtx.drawImage(
       chunk,
-      (counter % 100) * dir[0],
-      (counter % 100) * dir[1],
+      (counter % modeInterval) * dir[0],
+      (counter % modeInterval) * dir[1],
     );
   } else {
     encodeCtx.drawImage(chunk, 0, 0);
   }
 
+  modeCounter++;
+
   // update mode
-  if (counter % interval === 0 && Math.random() < modeProbabilityRef.value) {
-    mode = Math.floor(Math.random() * 3);
-
-    if (mode === 2) {
-      dir = [
-        Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
-        Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
-      ];
-
-      dir[0] === 0 && dir[1] === 0 && (dir[0] = 8 * Math.random());
-    }
-
-    interval = Math.floor(Math.random() * 60) + 10;
-  }
-
-  if (counter % interval === interval - 1) {
+  if (modeCounter > modeInterval) {
     mode = 0;
+    modeCounter = 0;
+
+    if (Math.random() < modeProbabilityRef.value) {
+      mode = Math.floor(Math.random() * 3);
+
+      if (mode === 2) {
+        dir = [
+          Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
+          Math.floor(Math.random() * 3 - 1) * 8 * Math.random(),
+        ];
+
+        dir[0] === 0 && dir[1] === 0 && (dir[0] = 8 * Math.random());
+      }
+
+      modeInterval = Math.floor(Math.random() * 100) + 10;
+    }
   }
 
   chunk.close();
@@ -96,6 +97,40 @@ function createDecoder(codecString: string) {
   });
 }
 
+async function handleEncodeOutput(chunk: EncodedVideoChunk) {
+  try {
+    decoder.decode(chunk);
+  } catch (e) {
+    forceKeyFlagRef.value = true;
+  }
+}
+
+function createEncoders(codecString: string) {
+  for (let i = 0; i < encoderNumRef.value; ++i) {
+    const encoder = new VideoEncoder({
+      output: handleEncodeOutput,
+      error: function (e) {
+        console.error(e, arguments);
+        forceKeyFlagRef.value = true;
+      },
+    });
+
+    encoder.configure({
+      codec: codecString,
+      width: width,
+      height: height,
+      avc: {
+        format: "annexb",
+      },
+    });
+
+    encoders.push({
+      encoder,
+      counter: 0,
+    });
+  }
+}
+
 async function start() {
   console.log("mounted");
   encodeCtx = encodedRef.value!.getContext("2d", {
@@ -108,43 +143,6 @@ async function start() {
   const stream = encodedRef.value!.captureStream(30);
   const [videoTrack] = stream.getVideoTracks();
   createDecoder(codecStringRef.value);
-
-  async function handleEncodeOutput(chunk: EncodedVideoChunk) {
-    try {
-      decoder.decode(chunk);
-    } catch (e) {
-      forceKeyFlagRef.value = true;
-    }
-  }
-
-  const encoders: { encoder: VideoEncoder; counter: number }[] = [];
-
-  function createEncoders(codecString: string) {
-    for (let i = 0; i < encoderNumRef.value; ++i) {
-      const encoder = new VideoEncoder({
-        output: handleEncodeOutput,
-        error: function (e) {
-          console.error(e, arguments);
-          forceKeyFlagRef.value = true;
-        },
-      });
-
-      encoder.configure({
-        codec: codecString,
-        width: width,
-        height: height,
-        avc: {
-          format: "annexb",
-        },
-      });
-
-      encoders.push({
-        encoder,
-        counter: 0,
-      });
-    }
-  }
-
   createEncoders(codecStringRef.value);
 
   const reader = async () => {
@@ -173,8 +171,6 @@ async function start() {
 
     frameReader.releaseLock();
   };
-
-  reader();
 
   let updateCounter = 0;
 
@@ -220,55 +216,40 @@ async function start() {
     lastUpdated = current;
   }
 
+  // start
   update();
+}
 
-  // let intervalId = setInterval(update, 1000 / 60);
+function presetVP8() {
+  encoderNumRef.value = 8;
+  codecStringRef.value = "vp8";
+  fpsRef.value = 10;
+  requestResetFlagRef.value = true;
+}
 
-  window.addEventListener("keydown", (e) => {
-    if (e.key === " ") {
-      update();
-    } else if (e.key === "u") {
-      // clearInterval(intervalId);
-      fpsRef.value += 1;
-      // intervalId = setInterval(reader, 1000 / ++fps);
-      console.log("fps", fpsRef.value);
-    } else if (e.key === "d") {
-      fpsRef.value -= 1;
-      // clearInterval(intervalId);
-      // intervalId = setInterval(reader, 1000 / --fps);
-      console.log("fps", fpsRef.value);
-    } else if (e.key === "r") {
-      drawNoiseToCanvas(encodeCtx);
-    } else if (e.key === "e") {
-      exportFlagRef.value = !exportFlagRef.value;
-    }
+function presetAVC() {
+  codecStringRef.value = "avc1.4d002a";
+  encoderNumRef.value = 5;
+  fpsRef.value = 30;
+  requestResetFlagRef.value = true;
+}
 
-    // codec select
-    if (e.key === "1") {
-      // vp09.02.10.10.01.09.16.09.01
-      // vp8
-      // avc1.4d002a
-      encoderNumRef.value = 8;
-      codecStringRef.value = "vp8";
-      fpsRef.value = 10;
-      requestResetFlagRef.value = true;
-    } else if (e.key === "2") {
-      codecStringRef.value = "avc1.4d002a";
-      encoderNumRef.value = 5;
-      fpsRef.value = 30;
-      requestResetFlagRef.value = true;
-    } else if (e.key === "3") {
-      encoderNumRef.value = 2;
-      codecStringRef.value = "vp09.02.10.10.01.09.16.09.01";
-      requestResetFlagRef.value = true;
-      fpsRef.value = 30;
-    } else if (e.key === "4") {
-      codecStringRef.value = "av01.0.04M.10.0.110.09.16.09.0";
-      encoderNumRef.value = 2;
-      requestResetFlagRef.value = true;
-      fpsRef.value = 30;
-    }
-  });
+function presetVP9() {
+  encoderNumRef.value = 2;
+  codecStringRef.value = "vp09.02.10.10.01.09.16.09.01";
+  requestResetFlagRef.value = true;
+  fpsRef.value = 30;
+}
+
+function presetAV1() {
+  codecStringRef.value = "av01.0.04M.10.0.110.09.16.09.0";
+  encoderNumRef.value = 2;
+  requestResetFlagRef.value = true;
+  fpsRef.value = 30;
+}
+
+function redrawNoise() {
+  drawNoiseToCanvas(encodeCtx);
 }
 </script>
 <template>
@@ -312,6 +293,16 @@ async function start() {
       <label for="exportCounter">exportCounter</label>
 
       <input name="exportCounter" type="number" v-model="exportCounterRef" />
+    </div>
+
+    <div>
+      <button @click="presetVP8">vp8</button>
+      <button @click="presetVP9">vp9</button>
+      <button @click="presetAV1">av1</button>
+      <button @click="presetAVC">avc</button>
+    </div>
+    <div>
+      <button @click="redrawNoise">redrawNoise</button>
     </div>
   </div>
 
