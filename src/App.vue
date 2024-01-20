@@ -143,8 +143,8 @@ async function start() {
     willReadFrequently: true,
   })!;
 
-  await drawImageToCanvas(encodeCtx, "/noise.png");
-  drawNoiseToCanvas(encodeCtx);
+  // await drawImageToCanvas(encodeCtx, "/noise.png");
+  // drawNoiseToCanvas(encodeCtx);
 
   const stream = encodedRef.value!.captureStream(30);
   const [videoTrack] = stream.getVideoTracks();
@@ -348,6 +348,12 @@ function presetAV1Mono() {
 function redrawNoise() {
   drawNoiseToCanvas(encodeCtx);
 }
+
+function drawFile(event: Event) {
+  const file = (event.target as HTMLInputElement).files![0];
+  drawImageToCanvas(encodeCtx, URL.createObjectURL(file));
+  drawImageToCanvas(encodeCtx, URL.createObjectURL(file));
+}
 </script>
 <template>
   <section>
@@ -393,6 +399,10 @@ function redrawNoise() {
           @input="updateMode"
         />
       </div>
+      <div>
+        <label for="mode">mode</label>
+        <input name="mode" type="file" @change="drawFile" accept="image/*" />
+      </div>
       <hr />
       <div>
         <label for="codecString">codecString</label>
@@ -422,27 +432,27 @@ function redrawNoise() {
           v-model="notimeUpdateFlagRef"
         />
       </div>
-      <!--      <div>-->
-      <!--        <label for="stopRenderFlag">stopRenderFlag</label>-->
-      <!--        <input-->
-      <!--          name="stopRenderFlag"-->
-      <!--          type="checkbox"-->
-      <!--          v-model="stopRenderFlagRef"-->
-      <!--        />-->
-      <!--      </div>-->
-      <!--      <div>-->
-      <!--        <label for="exportFlag">exportFlag</label>-->
+      <div>
+        <label for="stopRenderFlag">stopRenderFlag</label>
+        <input
+          name="stopRenderFlag"
+          type="checkbox"
+          v-model="stopRenderFlagRef"
+        />
+      </div>
+      <div>
+        <label for="exportFlag">exportFlag</label>
 
-      <!--        <input name="exportFlag" type="checkbox" v-model="exportFlagRef" />-->
-      <!--      </div>-->
-      <!--      <div>-->
-      <!--        <label for="exportCounter">exportCounter</label>-->
+        <input name="exportFlag" type="checkbox" v-model="exportFlagRef" />
+      </div>
+      <div>
+        <label for="exportCounter">exportCounter</label>
 
-      <!--        <input name="exportCounter" type="number" v-model="exportCounterRef" />-->
-      <!--      </div>-->
-      <!--      <div>-->
-      <!--        <button @click="exportBufferToFiles">exportBufferToFiles</button>-->
-      <!--      </div>-->
+        <input name="exportCounter" type="number" v-model="exportCounterRef" />
+      </div>
+      <div>
+        <button @click="exportBufferToFiles">exportBufferToFiles</button>
+      </div>
     </div>
   </section>
 
