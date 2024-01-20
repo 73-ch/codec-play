@@ -12,6 +12,8 @@ const height = 864;
 const encoderNumRef = ref<number>(2);
 const codecStringRef = ref<string>("av01.0.04M.10.0.110.09.16.09.0");
 
+const exportCounterRef = ref<number>(0);
+
 const fpsRef = ref<number>(60);
 
 // encode canvas setup
@@ -19,6 +21,8 @@ let encodeCtx: CanvasRenderingContext2D;
 
 let exportFlagRef = ref<boolean>(false);
 let forceKeyFlagRef = ref<boolean>(false);
+
+let requestResetFlagRef = ref<boolean>(false);
 
 let counter = 0;
 let mode = 0;
@@ -175,9 +179,16 @@ async function start() {
   let updateCounter = 0;
 
   let lastUpdated = performance.now();
-  let exportCounter = 0;
 
   async function update() {
+    if (requestResetFlagRef.value) {
+      createEncoders(codecStringRef.value);
+      createDecoder(codecStringRef.value);
+
+      requestResetFlagRef.value = false;
+      forceKeyFlagRef.value = true;
+    }
+
     // 60 fps
     if (updateCounter % Math.floor(60 / fpsRef.value) === 0) {
       await reader();
@@ -185,12 +196,11 @@ async function start() {
 
     // export
     if (exportFlagRef.value) {
-      console.log(exportCounter);
-      exportCounter++;
+      exportCounterRef.value++;
       const url = encodedRef.value!.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = url;
-      a.download = `export_${exportCounter.toString().padStart(5, "0")}.png`;
+      a.download = `export_${exportCounterRef.value.toString().padStart(5, "0")}.png`;
       a.click();
       await new Promise((resolve) => {
         setTimeout(resolve, 1000 / 10);
@@ -229,8 +239,6 @@ async function start() {
       console.log("fps", fpsRef.value);
     } else if (e.key === "r") {
       drawNoiseToCanvas(encodeCtx);
-      createEncoders(codecStringRef.value);
-      createDecoder(codecStringRef.value);
     } else if (e.key === "e") {
       exportFlagRef.value = !exportFlagRef.value;
     }
@@ -242,30 +250,23 @@ async function start() {
       // avc1.4d002a
       encoderNumRef.value = 8;
       codecStringRef.value = "vp8";
-      createEncoders(codecStringRef.value);
-      createDecoder(codecStringRef.value);
-      forceKeyFlagRef.value = true;
       fpsRef.value = 10;
+      requestResetFlagRef.value = true;
     } else if (e.key === "2") {
       codecStringRef.value = "avc1.4d002a";
       encoderNumRef.value = 5;
-      createEncoders(codecStringRef.value);
-      createDecoder(codecStringRef.value);
-      forceKeyFlagRef.value = true;
+      fpsRef.value = 30;
+      requestResetFlagRef.value = true;
     } else if (e.key === "3") {
       encoderNumRef.value = 2;
       codecStringRef.value = "vp09.02.10.10.01.09.16.09.01";
-      createEncoders(codecStringRef.value);
-      createDecoder(codecStringRef.value);
-
-      forceKeyFlagRef.value = true;
+      requestResetFlagRef.value = true;
+      fpsRef.value = 30;
     } else if (e.key === "4") {
       codecStringRef.value = "av01.0.04M.10.0.110.09.16.09.0";
       encoderNumRef.value = 2;
-      createEncoders(codecStringRef.value);
-      createDecoder(codecStringRef.value);
-
-      forceKeyFlagRef.value = true;
+      requestResetFlagRef.value = true;
+      fpsRef.value = 30;
     }
   });
 }
@@ -306,6 +307,11 @@ async function start() {
       <label for="exportFlag">exportFlag</label>
 
       <input name="exportFlag" type="checkbox" v-model="exportFlagRef" />
+    </div>
+    <div>
+      <label for="exportCounter">exportCounter</label>
+
+      <input name="exportCounter" type="number" v-model="exportCounterRef" />
     </div>
   </div>
 

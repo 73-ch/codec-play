@@ -22,7 +22,6 @@ export const drawNoiseToCanvas = (
   const pix = imgData.data;
   const pixLen = pix.length;
 
-  console.log(imgData);
   for (let pixel = 0; pixel < pixLen; pixel += 4) {
     const Y = Math.random() * 255;
     pix[pixel + 2] = color ? Math.random() * 255 : Y;
