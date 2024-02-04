@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { drawImageToCanvas, drawNoiseToCanvas } from "./assets/CanvasUtils.ts";
 
 // export
@@ -8,10 +8,10 @@ const exportEnabledRef = ref<boolean>(urlParams.has("export"));
 
 const encodedRef = ref<HTMLCanvasElement>();
 
-const modeProbabilityRef = ref<number>(0);
+const transformTransitionRate = ref<number>(0);
 
-const width = 864;
-const height = 864;
+const widthRef = ref<number>(864);
+const heightRef = ref<number>(864);
 
 const encoderNumRef = ref<number>(2);
 const codecStringRef = ref<string>("av01.0.04M.10.0.110.09.16.09.0");
@@ -65,8 +65,8 @@ async function handleDecodeOutput(chunk: VideoFrame) {
       chunk,
       Math.random() * 100 - 5,
       Math.random() * 100 - 5,
-      Math.random() * width * 0.5 + width * 0.5,
-      Math.random() * height * 0.5 + height * 0.5,
+      Math.random() * widthRef.value * 0.5 + widthRef.value * 0.5,
+      Math.random() * heightRef.value * 0.5 + heightRef.value * 0.5,
     );
   } else if (modeRef.value === 2) {
     encodeCtx.drawImage(
@@ -124,8 +124,8 @@ function createEncoders(codecString: string) {
 
     encoder.configure({
       codec: codecString,
-      width: width,
-      height: height,
+      width: widthRef.value,
+      height: heightRef.value,
       avc: {
         format: "annexb",
       },
@@ -141,14 +141,21 @@ function createEncoders(codecString: string) {
 let exportBuffer: string[] = [];
 let dhandle: any;
 
-async function start() {
+onMounted(async () => {
   console.log("mounted");
   encodeCtx = encodedRef.value!.getContext("2d", {
     willReadFrequently: true,
   })!;
+});
 
-  await drawImageToCanvas(encodeCtx, "/noise.png");
-  drawNoiseToCanvas(encodeCtx);
+async function start() {
+  console.log(encodeCtx);
+  // await drawImageToCanvas(encodeCtx, "/noise.png");
+  if (fileUrl) {
+    await drawImageToCanvas(encodeCtx, fileUrl);
+  } else {
+    drawNoiseToCanvas(encodeCtx);
+  }
 
   const stream = encodedRef.value!.captureStream(30);
   const [videoTrack] = stream.getVideoTracks();
@@ -211,7 +218,7 @@ async function start() {
     if (modeCounter > modeInterval) {
       // ランダムにモードを決定
       modeRef.value =
-        Math.random() < modeProbabilityRef.value
+        Math.random() < transformTransitionRate.value
           ? Math.floor(Math.random() * 3)
           : 0;
       updateMode();
@@ -315,7 +322,7 @@ function presetAVC() {
 function presetFixAVC() {
   codecStringRef.value = "avc1.4d002a";
   encoderNumRef.value = 5;
-  modeProbabilityRef.value = 0;
+  transformTransitionRate.value = 0;
   fpsRef.value = 60;
   requestResetFlagRef.value = true;
 }
@@ -324,7 +331,7 @@ function presetFixAVCMono() {
   redrawNoise();
   codecStringRef.value = "avc1.4d002a";
   encoderNumRef.value = 5;
-  modeProbabilityRef.value = 0;
+  transformTransitionRate.value = 0;
   fpsRef.value = 60;
   requestResetFlagRef.value = true;
 }
@@ -355,18 +362,29 @@ function redrawNoise() {
   drawNoiseToCanvas(encodeCtx);
 }
 
+let fileUrl = "";
+
+function drawImage() {
+  drawImageToCanvas(encodeCtx, fileUrl);
+}
+
 function drawFile(event: Event) {
   const file = (event.target as HTMLInputElement).files![0];
-  drawImageToCanvas(encodeCtx, URL.createObjectURL(file));
-  drawImageToCanvas(encodeCtx, URL.createObjectURL(file));
+  fileUrl = URL.createObjectURL(file);
+  drawImage();
 }
 </script>
 <template>
   <section>
     <div>
       <div>
+        <p>
+          <label for="image">image file </label>
+          <input name="image" type="file" @change="drawFile" accept="image/*" />
+        </p>
         <button @click="start">start</button>
-        <button @click="redrawNoise">redrawNoise</button>
+        <button @click="redrawNoise">Draw Noise</button>
+        <button @click="drawImage">Draw Image</button>
       </div>
       <div>
         <div>
@@ -389,77 +407,103 @@ function drawFile(event: Event) {
 
     <div>
       <div>
-        <label for="modeProbability">modeProbability</label>
-        <input
-          name="modeProbability"
-          type="number"
-          min="0"
-          max="1"
-          step="0.01"
-          v-model="modeProbabilityRef"
-        />
+        <p>
+          <label for="modeProbability">Transform Transition Rate </label>
+          <input
+            name="modeProbability"
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+            v-model="transformTransitionRate"
+          />
+        </p>
+        <p>
+          <label for="mode">mode </label>
+          <input
+            name="mode"
+            type="number"
+            min="0"
+            max="2"
+            step="1"
+            :value="modeRef"
+            @input="updateMode"
+          />
+        </p>
       </div>
-      <div>
-        <label for="mode">mode</label>
-        <input
-          name="mode"
-          type="number"
-          min="0"
-          max="2"
-          step="1"
-          :value="modeRef"
-          @input="updateMode"
-        />
-      </div>
-      <div>
-        <label for="mode">mode</label>
-        <input name="mode" type="file" @change="drawFile" accept="image/*" />
-      </div>
-      <hr />
-      <div>
-        <label for="codecString">codecString</label>
-        <input name="codecString" type="text" v-model="codecStringRef" />
-      </div>
-      <div>
-        <label for="encoderNum">encoderNum</label>
-        <input name="encoderNum" type="number" v-model="encoderNumRef" />
+
+      <div class="encoder-info">
+        <p>
+          <label for="codecString">codecString </label>
+          <input
+            id="codecStringInput"
+            name="codecString"
+            type="text"
+            v-model="codecStringRef"
+          />
+        </p>
+        <p>
+          <label for="encoderNum">encoderNum </label>
+          <input
+            name="encoderNum"
+            type="number"
+            v-model="encoderNumRef"
+            step="1"
+            min="1"
+            max="10"
+          />
+        </p>
       </div>
     </div>
     <div>
       <div>
-        <label for="fps">fps</label>
-        <input name="fps" type="number" v-model="fpsRef" />
-      </div>
-      <div>
-        <label for="forceKeyFlag">forceKeyFlag</label>
+        <p>
+          <label for="fps">fps </label>
+          <input
+            name="fps"
+            type="number"
+            v-model="fpsRef"
+            step="1"
+            min="0"
+            max="120"
+          />
+        </p>
+        <p>
+          <label for="forceKeyFlag">forceKeyFlag </label>
 
-        <input name="forceKeyFlag" type="checkbox" v-model="forceKeyFlagRef" />
-      </div>
-      <hr />
-      <div>
-        <label for="notimeUpdateFlag">notimeUpdateFlag</label>
-        <input
-          name="notimeUpdateFlag"
-          type="checkbox"
-          v-model="notimeUpdateFlagRef"
-        />
+          <input
+            name="forceKeyFlag"
+            type="checkbox"
+            v-model="forceKeyFlagRef"
+          />
+        </p>
       </div>
       <div>
-        <label for="stopRenderFlag">stopRenderFlag</label>
-        <input
-          name="stopRenderFlag"
-          type="checkbox"
-          v-model="stopRenderFlagRef"
-        />
+        <p>
+          <label for="notimeUpdateFlag">notimeUpdateFlag </label>
+          <input
+            name="notimeUpdateFlag"
+            type="checkbox"
+            v-model="notimeUpdateFlagRef"
+          />
+        </p>
+        <p>
+          <label for="stopRenderFlag">Pause Render </label>
+          <input
+            name="stopRenderFlag"
+            type="checkbox"
+            v-model="stopRenderFlagRef"
+          />
+        </p>
       </div>
       <div class="export-section" v-if="exportEnabledRef">
         <div>
-          <label for="exportFlag">exportFlag</label>
+          <label for="exportFlag">exportFlag </label>
 
           <input name="exportFlag" type="checkbox" v-model="exportFlagRef" />
         </div>
         <div>
-          <label for="exportCounter">exportCounter</label>
+          <label for="exportCounter">exportCounter </label>
 
           <input
             name="exportCounter"
@@ -490,5 +534,13 @@ canvas {
   width: 432px;
   height: 432px;
   border: none;
+}
+
+section div {
+  margin: 0.5em;
+}
+
+#codecStringInput {
+  width: 16em;
 }
 </style>
