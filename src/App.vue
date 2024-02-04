@@ -153,6 +153,8 @@ onMounted(async () => {
   encodeCtx = encodedRef.value!.getContext("2d", {
     willReadFrequently: true,
   })!;
+
+  encodeCtx.fillRect(0, 0, widthRef.value, heightRef.value);
 });
 
 async function start() {
@@ -494,6 +496,26 @@ function drawFile(event: Event) {
     <div>
       <div>
         <p>
+          <label for="width">width </label>
+          <input
+            name="width"
+            type="number"
+            v-model="widthRef"
+            step="1"
+            min="0"
+            max="10000"
+          />
+          <label for="height">height </label>
+          <input
+            name="height"
+            type="number"
+            v-model="heightRef"
+            step="1"
+            min="0"
+            max="10000"
+          />
+        </p>
+        <p>
           <label for="fps">fps </label>
           <input
             name="fps"
@@ -546,7 +568,12 @@ function drawFile(event: Event) {
     </div>
   </section>
 
-  <canvas width="864" height="864" ref="encodedRef"></canvas>
+  <canvas
+    :width="widthRef"
+    :height="heightRef"
+    ref="encodedRef"
+    :style="{ width: widthRef + 'px', height: heightRef + 'px' }"
+  ></canvas>
 </template>
 
 <style scoped>
