@@ -389,7 +389,7 @@ function drawFile(event: Event) {
 <template>
   <check-codec-support />
   <section>
-    <h1>Codec Play System(beta)</h1>
+    <h1>Codec Play Maker(beta)</h1>
     <div id="caption">
       <p>
         <a href="https://github.com/73-ch/codec-play">GitHub</a> |

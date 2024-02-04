@@ -1,4 +1,4 @@
-# Codec Play (beta)
+# Codec Play Maker (beta)
 
 Kosaku Namikawa
 
