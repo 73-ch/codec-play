@@ -2,6 +2,10 @@
 import { ref } from "vue";
 import { drawImageToCanvas, drawNoiseToCanvas } from "./assets/CanvasUtils.ts";
 
+// export
+const urlParams = new URLSearchParams(window.location.search);
+const exportEanbledRef = ref<boolean>(urlParams.has("export"));
+
 const encodedRef = ref<HTMLCanvasElement>();
 
 const modeProbabilityRef = ref<number>(0);
@@ -143,8 +147,8 @@ async function start() {
     willReadFrequently: true,
   })!;
 
-  // await drawImageToCanvas(encodeCtx, "/noise.png");
-  // drawNoiseToCanvas(encodeCtx);
+  await drawImageToCanvas(encodeCtx, "/noise.png");
+  drawNoiseToCanvas(encodeCtx);
 
   const stream = encodedRef.value!.captureStream(30);
   const [videoTrack] = stream.getVideoTracks();
@@ -363,15 +367,21 @@ function drawFile(event: Event) {
         <button @click="redrawNoise">redrawNoise</button>
       </div>
       <div>
-        <button @click="presetVP8">vp8</button>
-        <button @click="presetVP9">vp9</button>
-        <button @click="presetAV1">av1</button>
-        <button @click="presetAVC">avc</button>
-        <br />
-        <button @click="presetFixAVC">fixavc</button>
-        <button @click="presetFixAVCMono">fixavcmono</button>
-        <button @click="presetVP8Fix">fixvp8mono</button>
-        <button @click="presetAV1Mono">fixav1mono</button>
+        <div>
+          <h3>codec selector</h3>
+          <button @click="presetVP8">vp8</button>
+          <button @click="presetVP9">vp9</button>
+          <button @click="presetAV1">av1</button>
+          <button @click="presetAVC">avc</button>
+        </div>
+
+        <div>
+          <h3>presets</h3>
+          <button @click="presetFixAVC">fixavc</button>
+          <button @click="presetFixAVCMono">fixavcmono</button>
+          <button @click="presetVP8Fix">fixvp8mono</button>
+          <button @click="presetAV1Mono">fixav1mono</button>
+        </div>
       </div>
     </div>
 
@@ -440,18 +450,24 @@ function drawFile(event: Event) {
           v-model="stopRenderFlagRef"
         />
       </div>
-      <div>
-        <label for="exportFlag">exportFlag</label>
+      <div class="export-section" v-if="exportEanbledRef">
+        <div>
+          <label for="exportFlag">exportFlag</label>
 
-        <input name="exportFlag" type="checkbox" v-model="exportFlagRef" />
-      </div>
-      <div>
-        <label for="exportCounter">exportCounter</label>
+          <input name="exportFlag" type="checkbox" v-model="exportFlagRef" />
+        </div>
+        <div>
+          <label for="exportCounter">exportCounter</label>
 
-        <input name="exportCounter" type="number" v-model="exportCounterRef" />
-      </div>
-      <div>
-        <button @click="exportBufferToFiles">exportBufferToFiles</button>
+          <input
+            name="exportCounter"
+            type="number"
+            v-model="exportCounterRef"
+          />
+        </div>
+        <div>
+          <button @click="exportBufferToFiles">exportBufferToFiles</button>
+        </div>
       </div>
     </div>
   </section>
