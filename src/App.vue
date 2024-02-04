@@ -386,6 +386,12 @@ function drawFile(event: Event) {
   <check-codec-support />
   <section>
     <h1>Codec Play System(beta)</h1>
+    <div id="caption">
+      <p>
+        <a href="https://github.com/73-ch/codec-play">GitHub</a> |
+        <a href="https://73ch.work/">Kosaku Namikawa</a>
+      </p>
+    </div>
     <div>
       <div>
         <div>
@@ -548,12 +554,21 @@ section {
   justify-content: space-around;
 }
 
-#imageInput {
-  width: 50%;
+section div {
+  padding: 0;
+  margin: 0.25em;
 }
 
-section div {
-  margin: 0.5em;
+#caption {
+  padding-left: 1.5em;
+}
+
+#caption p {
+  margin: 0;
+}
+
+#imageInput {
+  width: 50%;
 }
 
 #codecStringInput {
