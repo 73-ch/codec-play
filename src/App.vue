@@ -4,7 +4,7 @@ import { drawImageToCanvas, drawNoiseToCanvas } from "./assets/CanvasUtils.ts";
 
 // export
 const urlParams = new URLSearchParams(window.location.search);
-const exportEanbledRef = ref<boolean>(urlParams.has("export"));
+const exportEnabledRef = ref<boolean>(urlParams.has("export"));
 
 const encodedRef = ref<HTMLCanvasElement>();
 
@@ -40,7 +40,7 @@ let dir: number[] = [0, 0];
 let modeInterval = 30;
 let modeCounter = 0;
 
-function updateMode(event?: InputEvent) {
+function updateMode(event?: Event) {
   if (event && event.target && event.target instanceof HTMLInputElement) {
     modeRef.value = +event.target.value;
   }
@@ -139,7 +139,7 @@ function createEncoders(codecString: string) {
 }
 
 let exportBuffer: string[] = [];
-let dhandle;
+let dhandle: any;
 
 async function start() {
   console.log("mounted");
@@ -156,6 +156,7 @@ async function start() {
   createEncoders(codecStringRef.value);
 
   const reader = async () => {
+    // @ts-ignore
     const processor = new MediaStreamTrackProcessor(videoTrack);
     const frameReader = processor.readable.getReader();
 
@@ -275,6 +276,7 @@ async function exportBufferToFiles() {
   console.log("exportBufferToFiles", exportBuffer.length);
 
   console.log("ファイル名インクリメントして保存");
+  // @ts-ignore
   dhandle = await window.showDirectoryPicker();
   await dhandle.requestPermission({ writable: true });
 
@@ -450,7 +452,7 @@ function drawFile(event: Event) {
           v-model="stopRenderFlagRef"
         />
       </div>
-      <div class="export-section" v-if="exportEanbledRef">
+      <div class="export-section" v-if="exportEnabledRef">
         <div>
           <label for="exportFlag">exportFlag</label>
 
