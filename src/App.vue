@@ -147,6 +147,7 @@ function createEncoders(codecString: string) {
 
 let exportBuffer: string[] = [];
 let dhandle: any;
+const isStarted = ref<boolean>(false);
 
 onMounted(async () => {
   encodeCtx = encodedRef.value!.getContext("2d", {
@@ -155,7 +156,8 @@ onMounted(async () => {
 });
 
 async function start() {
-  console.log(encodeCtx);
+  isStarted.value = true;
+
   // await drawImageToCanvas(encodeCtx, "/noise.png");
   if (fileUrl) {
     drawImageToCanvas(encodeCtx, fileUrl);
@@ -411,7 +413,7 @@ function drawFile(event: Event) {
           <button @click="redrawNoise">Draw Noise</button>
         </div>
         <div>
-          <button @click="start">start</button>
+          <button @click="start" :disabled="isStarted">start</button>
           <button @click="requestResetFlagRef = true">Reset Encoder</button>
         </div>
       </div>
