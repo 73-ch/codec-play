@@ -17,6 +17,13 @@ const heightRef = ref<number>(864);
 const encoderNumRef = ref<number>(2);
 const codecStringRef = ref<string>("av01.0.04M.10.0.110.09.16.09.0");
 
+const codecs = ref([
+  { text: "av1", value: "av01.0.04M.10.0.110.09.16.09.0" },
+  { text: "avc", value: "avc1.4d002a" },
+  { text: "vp8", value: "vp8" },
+  { text: "vp9", value: "vp09.00.10.10.01.09.16.09.01" },
+]);
+
 const exportCounterRef = ref<number>(0);
 
 const fpsRef = ref<number>(60);
@@ -376,23 +383,35 @@ function drawFile(event: Event) {
 }
 </script>
 <template>
-  <h1>Codec Play System(beta)</h1>
   <check-codec-support />
   <section>
+    <h1>Codec Play System(beta)</h1>
     <div>
       <div>
-        <p>
-          <label for="image">image file </label>
-          <input name="image" type="file" @change="drawFile" accept="image/*" />
-        </p>
-        <button @click="start">start</button>
-        <button @click="redrawNoise">Draw Noise</button>
-        <button @click="drawImage">Draw Image</button>
-        <button @click="requestResetFlagRef = true">Reset Encoder</button>
+        <div>
+          <span>
+            <button @click="drawImage">Draw Image</button>
+
+            <input
+              id="imageInput"
+              name="image"
+              type="file"
+              @change="drawFile"
+              accept="image/*"
+            />
+          </span>
+        </div>
+        <div>
+          <button @click="redrawNoise">Draw Noise</button>
+        </div>
+        <div>
+          <button @click="start">start</button>
+          <button @click="requestResetFlagRef = true">Reset Encoder</button>
+        </div>
       </div>
       <div>
         <div>
-          <h3>codec selector</h3>
+          <h3>codec preset selector</h3>
           <button @click="presetVP8">vp8</button>
           <button @click="presetVP9">vp9</button>
           <button @click="presetAV1">av1</button>
@@ -439,6 +458,11 @@ function drawFile(event: Event) {
       <div class="encoder-info">
         <p>
           <label for="codecString">codecString </label>
+          <select name="codecs" id="codec" v-model="codecStringRef">
+            <option v-for="codec in codecs" :value="codec.value">
+              {{ codec.text }}
+            </option>
+          </select>
           <input
             id="codecStringInput"
             name="codecString"
@@ -520,10 +544,12 @@ function drawFile(event: Event) {
 <style scoped>
 section {
   display: flex;
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
   justify-content: space-around;
-  width: 100%;
+}
+
+#imageInput {
+  width: 50%;
 }
 
 section div {
