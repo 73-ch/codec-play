@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { drawImageToCanvas, drawNoiseToCanvas } from "./assets/CanvasUtils.ts";
+import CheckCodecSupport from "./components/CheckCodecSupport.vue";
 
 // export
 const urlParams = new URLSearchParams(window.location.search);
@@ -8,7 +9,7 @@ const exportEnabledRef = ref<boolean>(urlParams.has("export"));
 
 const encodedRef = ref<HTMLCanvasElement>();
 
-const transformTransitionRate = ref<number>(0);
+const transformTransitionRate = ref<number>(0.05);
 
 const widthRef = ref<number>(864);
 const heightRef = ref<number>(864);
@@ -28,8 +29,7 @@ let forceKeyFlagRef = ref<boolean>(false);
 
 let requestResetFlagRef = ref<boolean>(false);
 
-let stopRenderFlagRef = ref<boolean>(false);
-let notimeUpdateFlagRef = ref<boolean>(false);
+let pauseRenderFlag = ref<boolean>(false);
 
 let decoder: VideoDecoder;
 const encoders: { encoder: VideoEncoder; counter: number }[] = [];
@@ -142,7 +142,6 @@ let exportBuffer: string[] = [];
 let dhandle: any;
 
 onMounted(async () => {
-  console.log("mounted");
   encodeCtx = encodedRef.value!.getContext("2d", {
     willReadFrequently: true,
   })!;
@@ -152,7 +151,7 @@ async function start() {
   console.log(encodeCtx);
   // await drawImageToCanvas(encodeCtx, "/noise.png");
   if (fileUrl) {
-    await drawImageToCanvas(encodeCtx, fileUrl);
+    drawImageToCanvas(encodeCtx, fileUrl);
   } else {
     drawNoiseToCanvas(encodeCtx);
   }
@@ -163,6 +162,8 @@ async function start() {
   createEncoders(codecStringRef.value);
 
   const reader = async () => {
+    if (pauseRenderFlag.value) return;
+
     // @ts-ignore
     const processor = new MediaStreamTrackProcessor(videoTrack);
     const frameReader = processor.readable.getReader();
@@ -202,7 +203,7 @@ async function start() {
   let exportCounter = 0;
 
   async function update() {
-    if (stopRenderFlagRef.value) return;
+    if (pauseRenderFlag.value) return;
 
     if (requestResetFlagRef.value) {
       createEncoders(codecStringRef.value);
@@ -262,15 +263,15 @@ async function start() {
       setTimeout(update, 1000 / 60 - (current - lastUpdated));
       // update();
     } else {
-      // update();
+      update();
 
-      if (codecStringRef.value === "vp8") {
-        setTimeout(update, 1000 / 60 - (current - lastUpdated));
-      } else if (codecStringRef.value === "avc1.4d002a") {
-        update();
-      } else {
-        setTimeout(update, 5);
-      }
+      // if (codecStringRef.value === "vp8") {
+      //   // setTimeout(update, 1000 / 60 - (current - lastUpdated));
+      // } else if (codecStringRef.value === "avc1.4d002a") {
+      //   update();
+      // } else {
+      //   setTimeout(update, 5);
+      // }
     }
     lastUpdated = current;
   }
@@ -375,6 +376,8 @@ function drawFile(event: Event) {
 }
 </script>
 <template>
+  <h1>Codec Play System(beta)</h1>
+  <check-codec-support />
   <section>
     <div>
       <div>
@@ -385,6 +388,7 @@ function drawFile(event: Event) {
         <button @click="start">start</button>
         <button @click="redrawNoise">Draw Noise</button>
         <button @click="drawImage">Draw Image</button>
+        <button @click="requestResetFlagRef = true">Reset Encoder</button>
       </div>
       <div>
         <div>
@@ -480,19 +484,11 @@ function drawFile(event: Event) {
       </div>
       <div>
         <p>
-          <label for="notimeUpdateFlag">notimeUpdateFlag </label>
-          <input
-            name="notimeUpdateFlag"
-            type="checkbox"
-            v-model="notimeUpdateFlagRef"
-          />
-        </p>
-        <p>
           <label for="stopRenderFlag">Pause Render </label>
           <input
             name="stopRenderFlag"
             type="checkbox"
-            v-model="stopRenderFlagRef"
+            v-model="pauseRenderFlag"
           />
         </p>
       </div>
@@ -528,12 +524,6 @@ section {
   align-items: center;
   justify-content: space-around;
   width: 100%;
-}
-
-canvas {
-  width: 432px;
-  height: 432px;
-  border: none;
 }
 
 section div {
