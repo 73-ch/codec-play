@@ -13,6 +13,10 @@ Alternative Visions 2024.
 
 Web Codecs is a WebAPI currently under specification and was tested using the latest Chrome 121 as of January 2024.
 
+## How to Use
+
+https://youtu.be/exW7C2eFaw4
+
 ## License
 
 MIT

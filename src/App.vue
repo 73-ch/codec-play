@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 import { drawImageToCanvas, drawNoiseToCanvas } from "./assets/CanvasUtils.ts";
 import CheckCodecSupport from "./components/CheckCodecSupport.vue";
+import HowToUse from "./components/HowToUse.vue";
 
 // export
 const urlParams = new URLSearchParams(window.location.search);
@@ -417,6 +418,7 @@ function drawFile(event: Event) {
         <div>
           <button @click="start" :disabled="isStarted">start</button>
           <button @click="requestResetFlagRef = true">Reset Encoder</button>
+          <how-to-use />
         </div>
       </div>
       <div>
