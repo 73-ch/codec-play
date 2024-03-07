@@ -279,7 +279,7 @@ async function start() {
 
       // if (codecStringRef.value === "vp8") {
       //   // setTimeout(update, 1000 / 60 - (current - lastUpdated));
-      // } else if (codecStringRef.value === "avc1.4d002a") {
+      // } else if (codecStringRef.value === "avc1.4d003d") {
       //   update();
       // } else {
       //   setTimeout(update, 5);
@@ -326,14 +326,14 @@ function presetVP8Fix() {
 }
 
 function presetAVC() {
-  codecStringRef.value = "avc1.4d002a";
+  codecStringRef.value = "avc1.4d003d";
   encoderNumRef.value = 5;
   fpsRef.value = 60;
   requestResetFlagRef.value = true;
 }
 
 function presetFixAVC() {
-  codecStringRef.value = "avc1.4d002a";
+  codecStringRef.value = "avc1.4d003d";
   encoderNumRef.value = 5;
   transformTransitionRate.value = 0;
   fpsRef.value = 60;
@@ -342,7 +342,7 @@ function presetFixAVC() {
 
 function presetFixAVCMono() {
   redrawNoise();
-  codecStringRef.value = "avc1.4d002a";
+  codecStringRef.value = "avc1.4d003d";
   encoderNumRef.value = 5;
   transformTransitionRate.value = 0;
   fpsRef.value = 60;
