@@ -20,7 +20,7 @@ const codecStringRef = ref<string>("av01.0.04M.10.0.110.09.16.09.0");
 
 const codecs = ref([
   { text: "av1", value: "av01.0.04M.10.0.110.09.16.09.0" },
-  { text: "avc", value: "avc1.4d002a" },
+  { text: "avc", value: "avc1.4d003d" },
   { text: "vp8", value: "vp8" },
   { text: "vp9", value: "vp09.00.10.10.01.09.16.09.01" },
 ]);
