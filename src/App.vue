@@ -157,17 +157,18 @@ onMounted(async () => {
 
   encodeCtx.fillRect(0, 0, widthRef.value, heightRef.value);
 
-  document.body.addEventListener("keydown", (ev) => {
-    console.log("key down");
-    if (ev.key === "1") {
-      presetVP8();
-    } else if (ev.key === "2") {
-      presetAVC();
-    } else if (ev.key === "3") {
-      redrawNoise();
-    }
-  });
+  window.addEventListener("keydown", keydown);
 });
+
+function keydown(ev: KeyboardEvent) {
+  if (ev.key === "1") {
+    presetVP8();
+  } else if (ev.key === "2") {
+    presetAVC();
+  } else if (ev.key === "3") {
+    redrawNoise();
+  }
+}
 
 async function start() {
   isStarted.value = true;
@@ -400,7 +401,7 @@ function drawFile(event: Event) {
 </script>
 <template>
   <check-codec-support />
-  <section>
+  <section @keydown="keydown">
     <h1>Codec Play Maker(beta)</h1>
     <div id="caption">
       <p>
