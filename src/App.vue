@@ -157,13 +157,14 @@ onMounted(async () => {
 
   encodeCtx.fillRect(0, 0, widthRef.value, heightRef.value);
 
-  window.addEventListener("keydown", ev => {
+  window.addEventListener("keydown", (ev) => {
     if (ev.key === "1") {
       presetVP8();
     } else if (ev.key === "2") {
       presetAVC();
     } else if (ev.key === "3") {
       redrawNoise();
+    }
   });
 });
 
