@@ -158,6 +158,7 @@ onMounted(async () => {
   encodeCtx.fillRect(0, 0, widthRef.value, heightRef.value);
 
   document.body.addEventListener("keydown", (ev) => {
+    console.log("key down");
     if (ev.key === "1") {
       presetVP8();
     } else if (ev.key === "2") {
