@@ -157,7 +157,9 @@ onMounted(async () => {
 
   encodeCtx.fillRect(0, 0, widthRef.value, heightRef.value);
 
-  window.addEventListener("keydown", keydown);
+  window.addEventListener("keydown", (ev) => {
+    keydown(ev);
+  });
 });
 
 function keydown(ev: KeyboardEvent) {
@@ -323,6 +325,7 @@ async function exportBufferToFiles() {
 }
 
 function presetVP8() {
+  console.log("presetVP8");
   encoderNumRef.value = 8;
   codecStringRef.value = "vp8";
   fpsRef.value = 30;
